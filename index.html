@@ -1,41 +1,53 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <!-- Karakter kodlama hatasını kesin olarak çözen UTF-8 tanımı -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannersten Kart Tarayıcı</title>
+    <title>Jannersten Kart Barkod Okuyucu - v5.24 (Dahili)</title>
+    
+    <!-- Harici Tasarım Dosyası -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Ana Motor Javascript Dosyası (Veritabanı Artık Bunun İçindedir, Çakışma Çözüldü) -->
+    <script src="scanner.js" defer></script>
 </head>
 <body>
-    <h2>Jannersten Tarayıcı</h2>
-    <div id="status">Kamera Başlatılıyor...</div>
 
-    <div class="video-container">
+    <h2>Jannersten Tarayıcı (v5.24 - Dahili Veritabanı)</h2>
+    <p>Kartı geniş alana yaklaştırın. Aşağıdaki turuncu kutudan canlı çizgileri izleyin.</p>
+
+    <div id="scanner-container">
         <video id="webcam" autoplay playsinline muted></video>
-        <div class="scan-line"></div>
+        <div id="laser-guide"></div>
     </div>
-
-    <div class="panel">
-        <div>Tanınan Kart: <span id="card-name">KART BEKLENİYOR...</span></div>
-        <div>Örüntü Kodu: <span id="pattern-code">-</span></div>
-        <div>Ham Veri (RLE): <span id="raw-data">-</span></div>
-        
-        <canvas id="hidden-canvas"></canvas>
+    
+    <div id="preview-container">
+        <div><small style="color: #ff9900;">Yazılımın Gördüğü Canlı Çizgiler (Siyahlar Kırmızı Çizilir):</small></div>
         <canvas id="debug-canvas"></canvas>
-        
-        <button onclick="switchCamera()">Kamerayı Değiştir (Ön/Arka)</button>
     </div>
 
-    <div id="history-container">
-        <div class="history-header">
-            <strong>Okuma Geçmişi</strong>
-            <button onclick="clearHistory()" class="btn-sm">Temizle</button>
-        </div>
+    <div class="btn-group">
+        <button id="switch-camera-btn" class="action-btn" onclick="switchCamera()">Kamera Değiştir</button>
+        <button id="clear-history-btn" class="action-btn" onclick="clearHistory()">Listeyi Temizle</button>
+    </div>
+
+    <!-- İşleme için arka planda kullanılan gizli canvas -->
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <div id="result-panel">
+        <div class="info-row"><strong>Durum:</strong> <span id="status" style="color: yellow;">Kamera başlatılıyor...</span></div>
+        <div class="info-row"><strong>Kart:</strong> <span id="card-name" style="color: #00ffcc; font-weight: bold; font-size: 1.2em;">KART BEKLENİYOR...</span></div>
+        <div class="info-row"><strong>Örüntü:</strong> <span id="pattern-code" style="color: #00ff00; font-weight: bold;">-</span></div>
+        <div class="info-row"><strong>Ham Model (RLE):</strong> <span id="raw-data" class="binary-output">-</span></div>
+    </div>
+
+    <div id="history-panel">
+        <strong>Okunan Tanımlı Kartlar Geçmişi:</strong>
         <ul id="history-list">
-            <li class="empty-history">Henüz bilinen kart okunmadı</li>
+            <li style="color: #666; text-align: center;">Henüz bilinen kart okunmadı</li>
         </ul>
     </div>
 
-    <script src="scanner.js"></script>
 </body>
 </html>
