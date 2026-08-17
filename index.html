@@ -1,1 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jannersten Kart Tarayıcı</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2>Jannersten Tarayıcı</h2>
+    <div id="status">Kamera Başlatılıyor...</div>
 
+    <div class="video-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div class="scan-line"></div>
+    </div>
+
+    <div class="panel">
+        <div>Tanınan Kart: <span id="card-name">KART BEKLENİYOR...</span></div>
+        <div>Örüntü Kodu: <span id="pattern-code">-</span></div>
+        <div>Ham Veri (RLE): <span id="raw-data">-</span></div>
+        
+        <canvas id="hidden-canvas"></canvas>
+        <canvas id="debug-canvas"></canvas>
+        
+        <button onclick="switchCamera()">Kamerayı Değiştir (Ön/Arka)</button>
+    </div>
+
+    <div id="history-container">
+        <div class="history-header">
+            <strong>Okuma Geçmişi</strong>
+            <button onclick="clearHistory()" class="btn-sm">Temizle</button>
+        </div>
+        <ul id="history-list">
+            <li class="empty-history">Henüz bilinen kart okunmadı</li>
+        </ul>
+    </div>
+
+    <script src="scanner.js"></script>
+</body>
+</html>
