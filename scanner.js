@@ -1,25 +1,31 @@
 // ========================================================
-// SABİT VERİTABANI (v5.34 - Tekil ve Net İmza Haritası)
+// ENTEGRE JANNERSTEN VERİTABANI (v5.35 - Sabitlenmiş 8 Bit)
 // ========================================================
 const JANNERSTEN_DECK_MAP = {
-    "I-D-K-D-I-D-I-G-K-D-I": "CA",
-    "D-I-G-I-G-K-G-I-D-I-G": "C2",
-    "I-D-I-D-I-G-K-G-I-D-I": "C3",
-    "I-D-K-D-K-D-I-D-K-D-I": "C4",
-    "G-K-D-K-G-I-D-I-G-K-D": "CK",
-    "D-K-D-I-D-K-D-I-D-K-D": "DJ"
+    "I-D-K-D-I-D-I-G": "CA",
+    "I-D-K-D-I-G-I-G": "CA",
+    "D-I-G-I-G-K-G-I": "C2",
+    "I-D-I-D-I-G-K-G": "C3",
+    "I-G-I-D-I-G-K-G": "C3",
+    "I-D-I-D-I-D-I-D": "C3",
+    "I-D-K-D-K-D-I-D": "C4",
+    "I-D-K-D-I-D-K-G": "C4",
+    "G-K-D-K-G-I-D-I": "CK",
+    "G-K-D-K-G-K-D-I": "CK",
+    "D-K-D-I-D-K-D-I": "DJ",
+    "D-K-G-I-D-K-D-I": "DJ"
 };
 
 // ========================================================
-// ORAN VE HİZALAMA MOTORU (v5.34 - Hizalama Düzeltilmiş)
+// ORAN TABANLI ÇEKİRDEK MOTOR (v5.35 - s[0].type Düzeltmeli)
 // ========================================================
 const BarcodeRatioEngine = {
-    CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 42, RATIO_THRESHOLD: 1.45 },
+    CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 22, RATIO_THRESHOLD: 1.45 },
     
     alignToBlackStart(seq) {
         if (!seq || seq.length === 0) return seq;
         let s = [...seq];
-        // DÜZELTME: Dizinin ilk elemanının tipini (aligned[0].type) doğru sorguluyoruz
+        // KESİN DÜZELTME: Dizinin ilk elemanının tipi (s[0].type) doğru kontrol ediliyor
         if (s.length > 0 && s[0].type === "W") {
             s.shift();
         }
@@ -28,16 +34,16 @@ const BarcodeRatioEngine = {
 
     processToRatios(targetSequence) {
         const aligned = this.alignToBlackStart(targetSequence);
-        if (!aligned || aligned.length < 10) return null;
+        if (!aligned || aligned.length < 7) return null;
 
         const blacks = aligned.filter(p => p.type === "B").map(p => p.val);
         const whites = aligned.filter(p => p.type === "W").map(p => p.val);
-        if (blacks.length < 4 || whites.length < 4) return null;
+        if (blacks.length < 3 || whites.length < 3) return null;
 
         const sortedB = [...blacks].sort((a, b) => a - b);
         const sortedW = [...whites].sort((a, b) => a - b);
-        const baseB = (sortedB[0] + sortedB[1]) / 2;
-        const baseW = (sortedW[0] + sortedW[1]) / 2;
+        const baseB = (sortedB + sortedB) / 2;
+        const baseW = (sortedW + sortedW) / 2;
         if (baseB < this.CONFIG.MIN_ELEMENT_VAL || baseW < this.CONFIG.MIN_ELEMENT_VAL) return null;
 
         return aligned.map(p => {
@@ -100,7 +106,7 @@ async function startCamera() {
 
 function handleStream(stream, msg) {
     currentStream = stream; video.srcObject = stream; statusText.innerText = msg;
-    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.34 Genis Kılavuz Aktif"; }, 1500);
+    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.35 Tikir Tikir Aktif"; }, 1500);
     requestAnimationFrame(processFrame);
 }
 
@@ -126,7 +132,8 @@ function parseBarPatternToObjects(binaryStr) {
             merged.push(rawResult[i]);
         }
     }
-    return merged.filter(o => o.val >= 3 && o.val <= 42);
+    // MAKSİMUM BOYUT SINIRI (`val <= 22`): Resim parazitlerini ve K harfini asla içeri almaz!
+    return merged.filter(o => o.val >= 3 && o.val <= 22);
 }
 
 function processFrame() {
@@ -134,10 +141,8 @@ function processFrame() {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // GENİŞLETİLMİŞ VE EŞİTLENMİŞ GEOMETRİ: Soldan %10 bosluk bırak, %80 genislik tara (style.css laser-guide ile tam esit)
+        // Geometriyi lazer kılavuz kutunla tam eşitlemeye devam ediyoruz
         const startX = Math.floor(canvas.width * 0.10), scanLength = Math.floor(canvas.width * 0.80);
-        
-        // DİKEY HİZALAMA: En üstten (0) baslayıp tam 260 piksel derinliğe in (style.css height: 260px ile birebir esit!)
         const startY = 0, scanHeight = 260; 
         
         const imgData = ctx.getImageData(startX, startY, scanLength, scanHeight), pixels = imgData.data;
@@ -158,8 +163,8 @@ function processFrame() {
                     debugImgData.data[idx] = isWhite ? 255 : 255; debugImgData.data[idx+1] = isWhite ? 255 : 0; debugImgData.data[idx+2] = isWhite ? 255 : 0; debugImgData.data[idx+3] = 255;
                 }
                 const runObjects = parseBarPatternToObjects(binaryString);
-                if (runObjects.length >= 10) {
-                    const targetSequence = runObjects.slice(-11);
+                if (runObjects.length >= 7) {
+                    const targetSequence = runObjects.slice(-8); // Yeniden kararlı 8'li gövdeye dönüldü
                     const pattern = BarcodeRatioEngine.processToRatios(targetSequence);
                     if (pattern !== null) {
                         dctx.putImageData(debugImgData, 0, 0);
@@ -182,11 +187,25 @@ function processFrame() {
                 }
             }
         }
-        if (!validPatternFound) {
-            matchCount = Math.max(0, matchCount - 1);
-            if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#00ffcc"; patternCodeText.innerText = "-"; }
-        }
+        if (!validPatternFound) resetScannerPanel();
     }
     requestAnimationFrame(processFrame);
 }
+
+function resetScannerPanel() {
+    matchCount = Math.max(0, matchCount - 1);
+    if (matchCount === 0) { cardNameText.innerText = "KART BEKLENİYOR..."; cardNameText.style.color = "#00ffcc"; patternCodeText.innerText = "-"; lastLoggedCard = ""; }
+}
+
+let snapshotCounter = 1;
+window.addEventListener('keydown', function(e) {
+    if (e.code === 'Space' || e.keyCode === 32) {
+        e.preventDefault();
+        if (latestActivePattern !== "-") {
+            if (snapshotCounter === 1) console.log(`\n================ [ ANLIK SNAPSHOT LOGLARI ] ================`);
+            console.log(`${snapshotCounter}.Satır > Oruntu: ${latestActivePattern} RLE: ${latestActiveRawString}`);
+            snapshotCounter++;
+        }
+    }
+});
 window.addEventListener('DOMContentLoaded', startCamera);
