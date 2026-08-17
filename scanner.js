@@ -1,25 +1,33 @@
 // ========================================================
-// ENTEGRE JANNERSTEN VERİTABANI (v5.25 - Dahili Database)
+// SADELEŞTİRİLMİŞ TEKİL VERİTABANI (v5.30 - Dairesel Zeka)
 // ========================================================
 const JANNERSTEN_DECK_MAP = {
     "I-D-K-D-I-D-I-G": "CA",
-    "I-D-K-D-I-G-I-G": "CA",
-    "G-I-D-K-G-K-G-K": "C3",
-    "D-I-D-I-D-I-D-I": "C3",
-    "I-D-I-D-I-D-I-D": "C3"
+    "D-I-G-I-G-K-G-I": "C2",
+    "I-D-I-D-I-G-K-G": "C3",
+    "I-D-K-D-K-D-I-D": "C4",
+    "G-K-D-K-G-I-D-I": "CK",
+    "D-K-D-I-D-K-D-I": "CJ"
 };
 
 // ========================================================
-// ORAN TABANLI ÇEKİRDEK MOTOR (v5.25)
+// ORAN TABANLI DAİRESEL MOTOR (v5.30 - Cyclic Matcher)
 // ========================================================
 const BarcodeRatioEngine = {
     CONFIG: { 
         MIN_ELEMENT_VAL: 3,
-        MAX_ELEMENT_VAL: 35,
+        MAX_ELEMENT_VAL: 38,
         RATIO_THRESHOLD: 1.45
     },
     processToRatios(targetSequence) {
-        if (!targetSequence || targetSequence.length < 8) return null;
+        if (!targetSequence || targetSequence.length < 7) return null;
+
+        // Hizalama: Her zaman dikey siyah bar ile başlamayı zorunlu kıl
+        if (targetSequence && targetSequence.type === "W") {
+            targetSequence.shift();
+        }
+
+        if (targetSequence.length < 7) return null;
 
         const blacks = targetSequence.filter(p => p.type === "B").map(p => p.val);
         const whites = targetSequence.filter(p => p.type === "W").map(p => p.val);
@@ -27,10 +35,10 @@ const BarcodeRatioEngine = {
 
         const sortedB = [...blacks].sort((a, b) => a - b);
         const sortedW = [...whites].sort((a, b) => a - b);
-        const baseB = sortedB[0]; 
-        const baseW = sortedW[0];
+        const baseB = (sortedB + (sortedB || sortedB)) / 2;
+        const baseW = (sortedW + (sortedW || sortedW)) / 2;
 
-        if (baseB < 1 || baseW < 1) return null;
+        if (baseB < this.CONFIG.MIN_ELEMENT_VAL || baseW < this.CONFIG.MIN_ELEMENT_VAL) return null;
 
         return targetSequence.map(p => {
             if (p.type === "B") {
@@ -39,11 +47,35 @@ const BarcodeRatioEngine = {
                 return (p.val / baseW >= this.CONFIG.RATIO_THRESHOLD) ? "G" : "D";
             }
         }).join("-");
+    },
+
+    /**
+     * Gelen kodu dairesel kaydırarak veritabanında arar (Mükerrer kodları yok eder)
+     */
+    cyclicalLookup(pattern) {
+        if (!pattern) return null;
+        if (JANNERSTEN_DECK_MAP[pattern]) return JANNERSTEN_DECK_MAP[pattern];
+
+        const parts = pattern.split("-");
+        let currentParts = [...parts];
+
+        // Diziyi kendi uzunluğu kadar dairesel döndürerek kombinasyonları dene
+        for (let i = 0; i < parts.length; i++) {
+            // Son elemanı alıp başa koy (Shift Right)
+            const last = currentParts.pop();
+            currentParts.unshift(last);
+            const shiftedPattern = currentParts.join("-");
+
+            if (JANNERSTEN_DECK_MAP[shiftedPattern]) {
+                return JANNERSTEN_DECK_MAP[shiftedPattern];
+            }
+        }
+        return null;
     }
 };
 
 // ========================================================
-// KAMERA VE ARAYÜZ YÖNETİMİ (v5.25 - Part 1/2)
+// KAMERA VE ARAYÜZ YÖNETİMİ (v5.30 - Part 1/2)
 // ========================================================
 const video = document.getElementById('webcam');
 const canvas = document.getElementById('hidden-canvas');
@@ -68,12 +100,8 @@ let isCameraWarmedUp = false;
 
 function playBeep() {
     try {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
         osc.type = 'sine'; osc.frequency.setValueAtTime(950, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
@@ -110,7 +138,7 @@ async function startCamera() {
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 handleStream(s, "Kamera Isiniyor (Genel)...");
-            } catch (ex) { statusText.innerText = "Kamera Hatasi: " + ex.message; }
+            } catch (ex) { statusText.innerText = "Kamera Hatası: " + ex.message; }
         }
     }
 }
@@ -119,7 +147,7 @@ function handleStream(stream, msg) {
     currentStream = stream; video.srcObject = stream; statusText.innerText = msg; 
     setTimeout(() => {
         isCameraWarmedUp = true;
-        statusText.innerText = "Tarama v5.25 Aktif (Tikir Tikir Modu)";
+        statusText.innerText = "Tarama v5.30 Aktif (Dairesel Zeka Modu)";
     }, 1500);
     requestAnimationFrame(processFrame);
 }
@@ -130,7 +158,7 @@ function switchCamera() {
 }
 
 // ========================================================
-// GÖRÜNTÜ ANALİZİ VEYA TARAMA DÖNGÜSÜ (v5.25 - Part 2/2)
+// GÖRÜNTÜ ANALİZİ VE DAİRESEL EŞLEŞTİRME (v5.30)
 // ========================================================
 function processFrame() {
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
@@ -175,13 +203,16 @@ function processFrame() {
                 }
 
                 const runObjects = parseBarPatternToObjects(binaryString);
-                if (runObjects.length >= 8 && runObjects.length <= 10) {
-                    const targetSequence = runObjects.slice(-8);
+                if (runObjects.length >= 7 && runObjects.length <= 14) {
+                    const targetSequence = runObjects.slice(-9); 
                     const pattern = BarcodeRatioEngine.processToRatios(targetSequence);
 
                     if (pattern !== null) {
                         dctx.putImageData(debugImgData, 0, 0);
-                        const isDefined = (typeof JANNERSTEN_DECK_MAP !== 'undefined' && JANNERSTEN_DECK_MAP[pattern]);
+                        
+                        // DAİRESEL ZEKA ARAMASI TALEBİ
+                        const cardNameFromCyclic = BarcodeRatioEngine.cyclicalLookup(pattern);
+                        const isDefined = (cardNameFromCyclic !== null);
 
                         if (isDefined || !validPatternFound) {
                             const rawString = targetSequence.map(o => `${o.type}${o.val}`).join("-");
@@ -190,7 +221,7 @@ function processFrame() {
                             latestActiveRawString = rawString;
                             
                             rawDataText.innerText = rawString;
-                            const cardFound = isDefined ? JANNERSTEN_DECK_MAP[pattern] : "Tanimlanmamis Oruntu: " + pattern;
+                            const cardFound = isDefined ? cardNameFromCyclic : "Tanımlanmamış Örüntü: " + pattern;
 
                             if (pattern === lockedPattern) { 
                                 matchCount++; 
@@ -216,7 +247,6 @@ function processFrame() {
     requestAnimationFrame(processFrame);
 }
 
-// KRİTİK DÜZELTME: Kart çekilince kilit temizlenir, bir sonraki gösterimde TIKIR TIKIR yeniden okur.
 function resetScannerPanel() {
     matchCount = Math.max(0, matchCount - 1);
     if (matchCount === 0) { 
@@ -225,7 +255,7 @@ function resetScannerPanel() {
         patternCodeText.innerText = "-";
         latestActivePattern = "-";
         latestActiveRawString = "-";
-        lastLoggedCard = ""; // Hafıza kilidi tamamen sıfırlandı!
+        lastLoggedCard = "";
     }
 }
 
@@ -269,10 +299,10 @@ window.addEventListener('keydown', function(e) {
             if (snapshotCounter === 1) {
                 console.log(`\n================ [ ANLIK SNAPSHOT LOGLARI ] ================`);
             }
-            console.log(`${snapshotCounter}.Satir > Oruntu: ${latestActivePattern} RLE: ${latestActiveRawString}`);
+            console.log(`${snapshotCounter}.Satır > Oruntu: ${latestActivePattern} RLE: ${latestActiveRawString}`);
             snapshotCounter++;
         } else {
-            console.log("[UYARI] Kararli cizgi yok.");
+            console.log("[UYARI] Kararlı çizgi yok.");
         }
     }
 });
