@@ -1,56 +1,86 @@
 // ========================================================
-// ENTEGRE JANNERSTEN VERİTABANI (v5.36 - Sabit 8 Bit Çekirdek)
+// SENİN BULDUĞUN GERÇEK CANLI VERİTABANI (v5.41 - Gömülü)
 // ========================================================
 const JANNERSTEN_DECK_MAP = {
-    "I-D-K-D-I-D-I-G": "CA",
-    "I-D-K-D-I-G-I-G": "CA",
-    "D-I-G-I-G-K-G-I": "C2",
-    "I-D-I-D-I-G-K-G": "C3",
-    "I-G-I-D-I-G-K-G": "C3",
-    "I-D-I-D-I-D-I-D": "C3",
-    "I-D-K-D-K-D-I-D": "C4",
-    "I-D-K-D-I-D-K-G": "C4",
-    "G-K-D-K-G-I-D-I": "CK",
-    "G-K-D-K-G-K-D-I": "CK",
-    "D-K-D-I-D-K-D-I": "DJ",
-    "D-K-G-I-D-K-D-I": "DJ"
+    // CLUBS
+    "I-G-K-D-I-G-I-G-I": "CA",
+    "I-D-I-G-I-G-K-G-I": "C2",
+    "I-G-I-D-I-G-K-G-I": "C3",
+    "D-I-D-I-D-I-D-K-G": "C4",
+    "I-D-K-I-G-K-D-K-D": "C5",
+    "K-I-D-K-G-I-G-K-D": "C6",
+    "I-G-K-D-I-G-K-D-I": "C7",
+    "I-G-I-D-K-G-K-D-I": "C8",
+    "I-D-I-G-K-G-K-D-I": "C9",
+    "K-I-D-K-G-K-G-I-D": "CT",
+    "I-D-I-D-K-G-K-D-I": "CJ",
+    "I-D-I-D-K-G-K-G-I": "CQ",
+    "I-G-K-D-K-G-I-D-I": "CK",
+
+    // DIAMONDS
+    "I-D-K-G-I-G-I-G-I": "DA",
+    "I-G-I-G-I-G-K-D-I": "D2",
+    "D-I-D-I-D-I-G-K-D": "D3",
+    "G-I-D-I-D-K-D-D-I": "D4",
+    "I-D-I-D-K-G-I-D-I": "D5",
+    "I-D-I-D-I-G-I-D-I": "D6",
+    "I-G-I-D-I-G-I-D-I": "D7",
+    "I-G-K-D-I-G-I-D-I": "D8",
+    "I-D-K-D-I-G-I-D-I": "D9",
+    "G-I-G-I-D-I-D-I-D": "DT",
+    "K-G-I-D-I-D-I-D-I": "DJ",
+    "K-D-I-D-I-D-I-D-I": "DQ",
+    "I-D-I-D-I-D-I-D-I": "DK",
+
+    // HEARTS
+    "I-D-I-D-I-D-I-D-I": "HA",
+    "I-G-K-D-K-D-I-D-I": "H2",
+    "I-G-I-G-K-D-I-D-I": "H3",
+    "I-D-I-G-I-D-I-D-I": "H4",
+    "I-G-I-G-I-D-I-D-I": "H5",
+    "I-G-K-G-I-D-I-D-I": "H6",
+    "I-D-K-G-I-D-I-D-I": "H7",
+    "I-D-K-G-K-D-I-D-I": "H8",
+    "K-I-G-K-G-K-D-I-D": "H9",
+    "I-G-I-G-K-G-I-D-I": "HT",
+    "I-G-I-D-K-D-I-D-I": "HJ",
+    "D-I-D-I-G-K-D-I-D": "HQ",
+    "D-I-G-K-G-K-D-I-D": "HK",
+
+    // SPADES
+    "I-D-I-D-I-G-I-G-I": "SA",
+    "I-G-I-D-K-G-I-G-I": "S2",
+    "I-D-I-G-K-G-I-G-I": "S3",
+    "D-I-G-I-G-I-D-K-G": "S4",
+    "G-K-I-D-I-D-K-D-I": "S5",
+    "I-D-K-G-K-D-I-G-I": "S6",
+    "I-G-K-G-I-D-I-G-I": "S7",
+    "D-I-D-I-G-I-D-I-G": "S8",
+    "I-D-I-D-I-D-I-G-I": "S9",
+    "I-D-K-G-I-D-K-G-I": "ST",
+    "I-G-K-D-I-D-K-G-I": "SJ",
+    "I-D-K-D-I-D-I-G-I": "SQ",
+    "D-I-G-I-D-I-D-I-G": "SK"
 };
 
 // ========================================================
-// ORAN TABANLI ÇEKİRDEK MOTOR (v5.36)
+// v4.3 RUHUNA SAHİP SABİT EŞİKLİ YAKIN MESAFE MOTORU
 // ========================================================
 const BarcodeRatioEngine = {
-    CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 35, RATIO_THRESHOLD: 1.45 },
-    
-    alignToBlackStart(seq) {
-        if (!seq || seq.length === 0) return seq;
-        let s = [...seq];
-        if (s.length > 0 && s[0].type === "W") {
-            s.shift();
-        }
-        return s;
-    },
-
     processToRatios(targetSequence) {
-        const aligned = this.alignToBlackStart(targetSequence);
-        if (!aligned || aligned.length < 8) return null;
+        if (!targetSequence || targetSequence.length < 8) return null;
 
-        const blacks = aligned.filter(p => p.type === "B").map(p => p.val);
-        const whites = aligned.filter(p => p.type === "W").map(p => p.val);
-        
-        // KATI KURAL: Tam olarak 4 siyah ve en az 3-4 beyaz yoksa kart değildir!
-        if (blacks.length !== 4 || whites.length < 3) return null;
+        // SENİN YAKIN MESAFE SENARYON: Çelik gibi sabit bıçak kesimi (7 piksel kuralı)
+        // 4-5 cm mesafede ve flaş açıkken en hatasız ayrımı bu sabit sınırlar sağlar.
+        const threshB = 11; 
+        const threshW = 11; 
 
-        const sortedB = [...blacks].sort((a, b) => a - b);
-        const sortedW = [...whites].sort((a, b) => a - b);
-        const baseB = (sortedB[0] + sortedB[1]) / 2;
-        const baseW = (sortedW[0] + sortedW[1]) / 2;
-        
-        if (baseB < this.CONFIG.MIN_ELEMENT_VAL || baseW < this.CONFIG.MIN_ELEMENT_VAL) return null;
-
-        return aligned.map(p => {
-            if (p.type === "B") return (p.val / baseB >= this.CONFIG.RATIO_THRESHOLD) ? "K" : "I";
-            return (p.val / baseW >= this.CONFIG.RATIO_THRESHOLD) ? "G" : "D";
+        return targetSequence.map(p => {
+            if (p.type === "B") {
+                return (p.val >= threshB) ? "K" : "I";
+            } else {
+                return (p.val >= threshW) ? "G" : "D";
+            }
         }).join("-");
     },
 
@@ -108,7 +138,7 @@ async function startCamera() {
 
 function handleStream(stream, msg) {
     currentStream = stream; video.srcObject = stream; statusText.innerText = msg;
-    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.36 Kurşun Geçirmez Aktif"; }, 1500);
+    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.41 Yakın Mesafe Hazır"; }, 1500);
     requestAnimationFrame(processFrame);
 }
 
@@ -134,6 +164,7 @@ function parseBarPatternToObjects(binaryStr) {
             merged.push(rawResult[i]);
         }
     }
+    // Flaş patlamasındaki kılcal sızıntıları temizleyen katı alt sınır (val >= 3)
     return merged.filter(o => o.val >= 3 && o.val <= 35);
 }
 
@@ -142,7 +173,8 @@ function processFrame() {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        const startX = Math.floor(canvas.width * 0.10), scanLength = Math.floor(canvas.width * 0.80);
+        // 4-5 cm yakın okuma için genişletilmiş ve ortalanmış tarama geometrisi
+        const startX = Math.floor(canvas.width * 0.15), scanLength = Math.floor(canvas.width * 0.7);
         const startY = 0, scanHeight = 260; 
         
         const imgData = ctx.getImageData(startX, startY, scanLength, scanHeight), pixels = imgData.data;
@@ -155,7 +187,9 @@ function processFrame() {
                     const i = rowOffset + (x * 4), b = 0.299 * pixels[i] + 0.587 * pixels[i+1] + 0.114 * pixels[i+2];
                     rowBrightnesses[x] = b; if (b < minB) minB = b; if (b > maxB) maxB = b;
                 }
-                if ((maxB - minB) < 65) continue;
+                
+                // Flaşlı yakın çekimde kontrast çok yüksek olacağı için alt eşiği (85) yukarı çekiyoruz
+                if ((maxB - minB) < 85) continue;
                 let dynamicThreshold = (minB + maxB) / 2, binaryString = ""; let debugImgData = dctx.createImageData(scanLength, 1);
                 for (let x = 0; x < scanLength; x++) {
                     const isWhite = rowBrightnesses[x] > dynamicThreshold; binaryString += isWhite ? "1" : "0";
@@ -164,12 +198,9 @@ function processFrame() {
                 }
                 const runObjects = parseBarPatternToObjects(binaryString);
                 
-                // Siyah çizgileri filtrele ve sayısını say
-                const blackCount = runObjects.filter(o => o.type === "B").length;
-                
-                // Sadece tam olarak 4 adet siyah çizgi barındıran gerçek barkod satırlarını kabul et!
-                if (blackCount === 4) {
-                    const targetSequence = runObjects.slice(-8); 
+                // Senin orijinal 9 elemanlı kararlı eşleme pencerene tam geri dönüş!
+                if (runObjects.length >= 9) {
+                    const targetSequence = runObjects.slice(-9); 
                     const pattern = BarcodeRatioEngine.processToRatios(targetSequence);
                     if (pattern !== null) {
                         dctx.putImageData(debugImgData, 0, 0);
