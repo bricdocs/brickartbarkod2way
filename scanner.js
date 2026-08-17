@@ -1,5 +1,5 @@
 // ========================================================
-// SABİT VERİTABANI (v5.33 - Tekil ve Net İmza Haritası)
+// SABİT VERİTABANI (v5.34 - Tekil ve Net İmza Haritası)
 // ========================================================
 const JANNERSTEN_DECK_MAP = {
     "I-D-K-D-I-D-I-G-K-D-I": "CA",
@@ -11,7 +11,7 @@ const JANNERSTEN_DECK_MAP = {
 };
 
 // ========================================================
-// ORAN VE HİZALAMA MOTORU (v5.33 - Siyah Bar Başlangıçlı)
+// ORAN VE HİZALAMA MOTORU (v5.34 - Hizalama Düzeltilmiş)
 // ========================================================
 const BarcodeRatioEngine = {
     CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 42, RATIO_THRESHOLD: 1.45 },
@@ -19,8 +19,8 @@ const BarcodeRatioEngine = {
     alignToBlackStart(seq) {
         if (!seq || seq.length === 0) return seq;
         let s = [...seq];
-        // 1. Adım: Beyaz boşlukla başlıyorsa at, her zaman siyah (B) ile başlat
-        if (s.length > 0 && s.type === "W") {
+        // DÜZELTME: Dizinin ilk elemanının tipini (aligned[0].type) doğru sorguluyoruz
+        if (s.length > 0 && s[0].type === "W") {
             s.shift();
         }
         return s;
@@ -36,8 +36,8 @@ const BarcodeRatioEngine = {
 
         const sortedB = [...blacks].sort((a, b) => a - b);
         const sortedW = [...whites].sort((a, b) => a - b);
-        const baseB = (sortedB + sortedB) / 2;
-        const baseW = (sortedW + sortedW) / 2;
+        const baseB = (sortedB[0] + sortedB[1]) / 2;
+        const baseW = (sortedW[0] + sortedW[1]) / 2;
         if (baseB < this.CONFIG.MIN_ELEMENT_VAL || baseW < this.CONFIG.MIN_ELEMENT_VAL) return null;
 
         return aligned.map(p => {
@@ -100,7 +100,7 @@ async function startCamera() {
 
 function handleStream(stream, msg) {
     currentStream = stream; video.srcObject = stream; statusText.innerText = msg;
-    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.33 Kararlı Aktif"; }, 1500);
+    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.34 Genis Kılavuz Aktif"; }, 1500);
     requestAnimationFrame(processFrame);
 }
 
@@ -133,8 +133,13 @@ function processFrame() {
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const startX = Math.floor(canvas.width * 0.15), scanLength = Math.floor(canvas.width * 0.7);
-        const startY = Math.floor(canvas.height * 0.35), scanHeight = 200;
+        
+        // GENİŞLETİLMİŞ VE EŞİTLENMİŞ GEOMETRİ: Soldan %10 bosluk bırak, %80 genislik tara (style.css laser-guide ile tam esit)
+        const startX = Math.floor(canvas.width * 0.10), scanLength = Math.floor(canvas.width * 0.80);
+        
+        // DİKEY HİZALAMA: En üstten (0) baslayıp tam 260 piksel derinliğe in (style.css height: 260px ile birebir esit!)
+        const startY = 0, scanHeight = 260; 
+        
         const imgData = ctx.getImageData(startX, startY, scanLength, scanHeight), pixels = imgData.data;
         let validPatternFound = false; debugCanvas.width = scanLength; debugCanvas.height = 1; dctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
 
@@ -153,7 +158,6 @@ function processFrame() {
                     debugImgData.data[idx] = isWhite ? 255 : 255; debugImgData.data[idx+1] = isWhite ? 255 : 0; debugImgData.data[idx+2] = isWhite ? 255 : 0; debugImgData.data[idx+3] = 255;
                 }
                 const runObjects = parseBarPatternToObjects(binaryString);
-                // 2. Adım: Kesme aralığı 11 elemente çıkarılarak imza kararlılaştırıldı
                 if (runObjects.length >= 10) {
                     const targetSequence = runObjects.slice(-11);
                     const pattern = BarcodeRatioEngine.processToRatios(targetSequence);
