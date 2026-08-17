@@ -1,5 +1,5 @@
 // ========================================================
-// ENTEGRE JANNERSTEN VERİTABANI (v5.35 - Sabitlenmiş 8 Bit)
+// ENTEGRE JANNERSTEN VERİTABANI (v5.36 - Sabit 8 Bit Çekirdek)
 // ========================================================
 const JANNERSTEN_DECK_MAP = {
     "I-D-K-D-I-D-I-G": "CA",
@@ -17,15 +17,14 @@ const JANNERSTEN_DECK_MAP = {
 };
 
 // ========================================================
-// ORAN TABANLI ÇEKİRDEK MOTOR (v5.35 - s[0].type Düzeltmeli)
+// ORAN TABANLI ÇEKİRDEK MOTOR (v5.36)
 // ========================================================
 const BarcodeRatioEngine = {
-    CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 22, RATIO_THRESHOLD: 1.45 },
+    CONFIG: { MIN_ELEMENT_VAL: 3, MAX_ELEMENT_VAL: 35, RATIO_THRESHOLD: 1.45 },
     
     alignToBlackStart(seq) {
         if (!seq || seq.length === 0) return seq;
         let s = [...seq];
-        // KESİN DÜZELTME: Dizinin ilk elemanının tipi (s[0].type) doğru kontrol ediliyor
         if (s.length > 0 && s[0].type === "W") {
             s.shift();
         }
@@ -34,16 +33,19 @@ const BarcodeRatioEngine = {
 
     processToRatios(targetSequence) {
         const aligned = this.alignToBlackStart(targetSequence);
-        if (!aligned || aligned.length < 7) return null;
+        if (!aligned || aligned.length < 8) return null;
 
         const blacks = aligned.filter(p => p.type === "B").map(p => p.val);
         const whites = aligned.filter(p => p.type === "W").map(p => p.val);
-        if (blacks.length < 3 || whites.length < 3) return null;
+        
+        // KATI KURAL: Tam olarak 4 siyah ve en az 3-4 beyaz yoksa kart değildir!
+        if (blacks.length !== 4 || whites.length < 3) return null;
 
         const sortedB = [...blacks].sort((a, b) => a - b);
         const sortedW = [...whites].sort((a, b) => a - b);
-        const baseB = (sortedB + sortedB) / 2;
-        const baseW = (sortedW + sortedW) / 2;
+        const baseB = (sortedB[0] + sortedB[1]) / 2;
+        const baseW = (sortedW[0] + sortedW[1]) / 2;
+        
         if (baseB < this.CONFIG.MIN_ELEMENT_VAL || baseW < this.CONFIG.MIN_ELEMENT_VAL) return null;
 
         return aligned.map(p => {
@@ -106,7 +108,7 @@ async function startCamera() {
 
 function handleStream(stream, msg) {
     currentStream = stream; video.srcObject = stream; statusText.innerText = msg;
-    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.35 Tikir Tikir Aktif"; }, 1500);
+    setTimeout(() => { isCameraWarmedUp = true; statusText.innerText = "Tarama v5.36 Kurşun Geçirmez Aktif"; }, 1500);
     requestAnimationFrame(processFrame);
 }
 
@@ -132,8 +134,7 @@ function parseBarPatternToObjects(binaryStr) {
             merged.push(rawResult[i]);
         }
     }
-    // MAKSİMUM BOYUT SINIRI (`val <= 22`): Resim parazitlerini ve K harfini asla içeri almaz!
-    return merged.filter(o => o.val >= 3 && o.val <= 22);
+    return merged.filter(o => o.val >= 3 && o.val <= 35);
 }
 
 function processFrame() {
@@ -141,7 +142,6 @@ function processFrame() {
         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        // Geometriyi lazer kılavuz kutunla tam eşitlemeye devam ediyoruz
         const startX = Math.floor(canvas.width * 0.10), scanLength = Math.floor(canvas.width * 0.80);
         const startY = 0, scanHeight = 260; 
         
@@ -163,8 +163,13 @@ function processFrame() {
                     debugImgData.data[idx] = isWhite ? 255 : 255; debugImgData.data[idx+1] = isWhite ? 255 : 0; debugImgData.data[idx+2] = isWhite ? 255 : 0; debugImgData.data[idx+3] = 255;
                 }
                 const runObjects = parseBarPatternToObjects(binaryString);
-                if (runObjects.length >= 7) {
-                    const targetSequence = runObjects.slice(-8); // Yeniden kararlı 8'li gövdeye dönüldü
+                
+                // Siyah çizgileri filtrele ve sayısını say
+                const blackCount = runObjects.filter(o => o.type === "B").length;
+                
+                // Sadece tam olarak 4 adet siyah çizgi barındıran gerçek barkod satırlarını kabul et!
+                if (blackCount === 4) {
+                    const targetSequence = runObjects.slice(-8); 
                     const pattern = BarcodeRatioEngine.processToRatios(targetSequence);
                     if (pattern !== null) {
                         dctx.putImageData(debugImgData, 0, 0);
